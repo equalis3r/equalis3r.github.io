@@ -41,11 +41,9 @@ equalis3r
 <nav class=menu>
 <ul class="menu__inner menu__inner--desktop">
 <li><a href=/about>About</a></li>
-<li><a href=/showcase>Showcase</a></li>
 </ul>
 <ul class="menu__inner menu__inner--mobile">
 <li><a href=/about>About</a></li>
-<li><a href=/showcase>Showcase</a></li>
 </ul>
 </nav>
 </header>
@@ -80,51 +78,57 @@ your internal network is connected via <strong>wlan0</strong>.</p>
 by checking with <code>iw phy</code>.
 We first need to set up our interfaces with systemd-networkd.
 For <code>eth0</code>, we want to receive the IP from our router, so DHCP
-is set to yes.
-<strong>File:</strong> /etc/systemd/network/20-wired.network
+is set to yes.</p>
+<pre><code>File: /etc/systemd/network/20-wired.network
 [Match]
-Name=eth0</p>
-<pre><code>[Network]
+Name=eth0
+
+[Network]
 DHCP=yes
 </code></pre>
 <p>I don&rsquo;t think it matters to set up <code>wlan0</code> since we will designate
-that task to iwd but we can use it later anyway.
-<strong>File:</strong> /etc/systemd/network/25-wireless.network
+that task to iwd but we can use it later anyway.</p>
+<pre><code>File: /etc/systemd/network/25-wireless.network
 [Match]
-Name=wlan0</p>
-<pre><code>[Network]
+Name=wlan0
+
+[Network]
 DHCP=yes
 </code></pre>
-<p>Then, we let iwd configure the network for us.
-<strong>File:</strong> /etc/iwd/main.conf
+<p>Then, we let iwd configure the network for us.</p>
+<pre><code>File: /etc/iwd/main.conf
 [General]
-EnableNetworkConfiguration=true</p>
+EnableNetworkConfiguration=true
+</code></pre>
 <p>Next, we need to create our wireless profile so iwd
-can broadcast it. In my case, I call it <strong>Void</strong>.
-<strong>File:</strong> /var/lib/iwd/ap/Void.ap
+can broadcast it. In my case, I call it <strong>Void</strong>.</p>
+<pre><code>File: /var/lib/iwd/ap/Void.ap
 [Security]
-Passphrase=your passphrase</p>
-<pre><code>[IPv4]
+Passphrase=your passphrase
+
+[IPv4]
 Address=192.168.1.1
 Gateway=192.168.1.1
 Netmask=255.255.255.0
 DNSList=8.8.8.8
 </code></pre>
-<p>Then, we start iwd AP mode on <code>wlan0</code>.
-&#187;> iwctl
-&#187;> device wlan0 set-property Mode ap
-&#187;> ap wlan0 start-profile Void</p>
+<p>Then, we start iwd AP mode on <code>wlan0</code>.</p>
+<pre><code>&gt;&gt;&gt; iwctl
+&gt;&gt;&gt; device wlan0 set-property Mode ap
+&gt;&gt;&gt; ap wlan0 start-profile Void
+</code></pre>
 <p>Up and running? Nope. Turns out we need to enable
 NAT (Network Address Translation), otherwise our subnet cannot
 access internet (or the externat network). Add the following rules
-to your nftables
-<strong>File:</strong> /etc/nftables.conf
-&mldr;
+to your nftables</p>
+<pre><code>File: /etc/nftables.conf
+...
 table ip nat {
-chain prerouting {
-type nat hook prerouting priority 0; policy accept;
-}</p>
-<pre><code>    chain postrouting {
+    chain prerouting {
+         type nat hook prerouting priority 0; policy accept;
+     }
+ 
+    chain postrouting {
         type nat hook postrouting priority 100; policy accept;
         oifname &quot;eth0&quot; masquerade
     }
@@ -139,28 +143,31 @@ iwd AP mode is very basic that it does not take advantage of
 my wireless adapater features, and thus I search around for
 the second method.</p>
 <h2 id=method-2-hostapd--bridge-wlan0-and-eth0>Method 2: Hostapd + Bridge wlan0 and eth0<a href=#method-2-hostapd--bridge-wlan0-and-eth0 class=hanchor arialabel=Anchor>&#8983;</a> </h2>
-<p>First, we need to create a virtual bridge:
-<strong>File:</strong> /etc/systemd/network/02-br0.netdev
+<p>First, we need to create a virtual bridge:</p>
+<pre><code>File: /etc/systemd/network/02-br0.netdev
 [NetDev]
 Name=br0
-Kind=bridge</p>
-<p><strong>File:</strong> /etc/systemd/network/16-br0_up.network
+Kind=bridge
+
+File: /etc/systemd/network/16-br0_up.network
 [Match]
-Name=br0</p>
-<pre><code>[Network]
+Name=br0
+
+[Network]
 DHCP=ipv4
-</code></pre>
-<p><strong>File:</strong> /etc/systemd/network/04-eth0.network
+
+File: /etc/systemd/network/04-eth0.network
 [Match]
-Name=eth0</p>
-<pre><code>[Network]
+Name=eth0
+
+[Network]
 Bridge=br0
-</code></pre>
-<p>We also need to reconfigure our internal interface:
-<strong>File:</strong> /etc/systemd/network/25-wireless.network
+
+File: /etc/systemd/network/25-wireless.network
 [Match]
-Name=wlan0</p>
-<pre><code>[Network]
+Name=wlan0
+
+[Network]
 IPMasquerade=yes
 Address=192.168.16.1/24
 DHCPServer=yes
@@ -170,10 +177,9 @@ DNS=192.168.16.1
 DNS=8.8.8.8
 DNS=8.8.4.4 
 </code></pre>
-<p>We&rsquo;re almost done. We only need to configure hostapd. Depends on
-your use case, you may want to change the settings such as
-country_code, channel,&mldr;
-<strong>File:</strong> /etc/hostapd/hostapd.conf
+<p>Then configure hostapd. Depends on your use case,
+you may want to change the settings such as country_code, channel,&mldr;</p>
+<pre><code>File: /etc/hostapd/hostapd.conf
 interface=wlan0
 bridge=br0
 driver=nl80211
@@ -187,8 +193,9 @@ wpa=2
 wpa_passphrase=verySecretPassword
 wpa_key_mgmt=WPA-PSK
 wpa_pairwise=CCMP
-ieee80211n=1</p>
-<p>Then enable hostapd.service and reboot. Using this method, my download
+ieee80211n=1
+</code></pre>
+<p>Enable hostapd.service and reboot. Using this method, my download
 speed when connected to Void is improved to around 85mpbs. Whoops!
 However, I&rsquo;m still looking into methods that can let me use 80211ac/ax
 on 5Ghz channels.</p>
