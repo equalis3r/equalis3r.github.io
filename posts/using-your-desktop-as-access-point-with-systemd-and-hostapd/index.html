@@ -3,8 +3,7 @@
 <title>Using your desktop as access point with Systemd and Hostapd :: equalis3r</title>
 <meta charset=utf-8>
 <meta name=viewport content="width=device-width,initial-scale=1">
-<meta name=description content="Situation  A desktop with Intel AX200 An old and slow access point. Using systemd-networkd, systemd-networkd, and nftables for network configuration.  Preparation Assuming that your external network is connected via eth0 and your internal network is connected via wlan0.
-Method 1: iwd AP mode Make sure that your wireless adapter supports this operation mode by checking with iw phy. We first need to set up our interfaces with systemd-networkd. For eth0, we want to receive the IP from our router, so DHCP is set to yes.">
+<meta name=description content="My self-documentation on how to configure my desktop as an access point">
 <meta name=keywords content=",">
 <meta name=robots content="noodp">
 <link rel=canonical href=https://equalis3r.github.io/posts/using-your-desktop-as-access-point-with-systemd-and-hostapd/>
@@ -18,8 +17,7 @@ Method 1: iwd AP mode Make sure that your wireless adapter supports this operati
 <meta property="og:locale" content="en">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Using your desktop as access point with Systemd and Hostapd">
-<meta property="og:description" content="Situation  A desktop with Intel AX200 An old and slow access point. Using systemd-networkd, systemd-networkd, and nftables for network configuration.  Preparation Assuming that your external network is connected via eth0 and your internal network is connected via wlan0.
-Method 1: iwd AP mode Make sure that your wireless adapter supports this operation mode by checking with iw phy. We first need to set up our interfaces with systemd-networkd. For eth0, we want to receive the IP from our router, so DHCP is set to yes.">
+<meta property="og:description" content="My self-documentation on how to configure my desktop as an access point">
 <meta property="og:url" content="https://equalis3r.github.io/posts/using-your-desktop-as-access-point-with-systemd-and-hostapd/">
 <meta property="og:site_name" content="equalis3r">
 <meta property="og:image" content="https://equalis3r.github.io/">
@@ -59,6 +57,7 @@ equalis3r
 <span class=post-date>
 2022-01-26
 </span>
+<span class=post-author>:: equalis3r</span>
 </div>
 <span class=post-tags>
 #<a href=https://equalis3r.github.io/tags/networking/>networking</a>&nbsp;
@@ -74,125 +73,107 @@ equalis3r
 for network configuration.</li>
 </ol>
 <h2 id=preparation>Preparation<a href=#preparation class=hanchor arialabel=Anchor>&#8983;</a> </h2>
-<p>Assuming that your external network is connected via <code>eth0</code> and
-your internal network is connected via <code>wlan0</code>.</p>
-<h2 id=method-1-iwd-ap-mode>Method 1: <code>iwd</code> AP mode<a href=#method-1-iwd-ap-mode class=hanchor arialabel=Anchor>&#8983;</a> </h2>
+<p>Assuming that your external network is connected via <strong>eth0</strong> and
+your internal network is connected via <strong>wlan0</strong>.</p>
+<h2 id=method-1-iwd-ap-mode>Method 1: iwd AP mode<a href=#method-1-iwd-ap-mode class=hanchor arialabel=Anchor>&#8983;</a> </h2>
 <p>Make sure that your wireless adapter supports this operation mode
 by checking with <code>iw phy</code>.
 We first need to set up our interfaces with systemd-networkd.
 For <code>eth0</code>, we want to receive the IP from our router, so DHCP
-is set to <code>yes</code>.</p>
-<blockquote>
-<p><code>/etc/systemd/network/20-wired.network</code>
+is set to yes.
+<strong>File:</strong> /etc/systemd/network/20-wired.network
 [Match]
 Name=eth0</p>
-<p>[Network]
-DHCP=yes</p>
-</blockquote>
+<pre><code>[Network]
+DHCP=yes
+</code></pre>
 <p>I don&rsquo;t think it matters to set up <code>wlan0</code> since we will designate
-that task to <code>iwd</code> but we can use it later anyway.</p>
-<blockquote>
-<p><code>/etc/systemd/network/25-wireless.network</code>
+that task to iwd but we can use it later anyway.
+<strong>File:</strong> /etc/systemd/network/25-wireless.network
 [Match]
 Name=wlan0</p>
-<p>[Network]
-DHCP=yes</p>
-</blockquote>
-<p>Then, we let <code>iwd</code> configure the network for us.</p>
-<blockquote>
-<p><code>/etc/iwd/main.conf</code>
+<pre><code>[Network]
+DHCP=yes
+</code></pre>
+<p>Then, we let iwd configure the network for us.
+<strong>File:</strong> /etc/iwd/main.conf
 [General]
 EnableNetworkConfiguration=true</p>
-</blockquote>
-<p>Next, we need to create our wireless profile so <code>iwd</code>
-can broadcast it. In my case, I call it <em>Void</em>.</p>
-<blockquote>
-<p><code>/var/lib/iwd/ap/Void.ap</code>
+<p>Next, we need to create our wireless profile so iwd
+can broadcast it. In my case, I call it <strong>Void</strong>.
+<strong>File:</strong> /var/lib/iwd/ap/Void.ap
 [Security]
 Passphrase=your passphrase</p>
-<p>[IPv4]
+<pre><code>[IPv4]
 Address=192.168.1.1
 Gateway=192.168.1.1
 Netmask=255.255.255.0
-DNSList=8.8.8.8</p>
-</blockquote>
-<p>Then, we start <code>iwd</code> AP mode on <code>wlan0</code>.</p>
-<blockquote>
-<blockquote>
-<blockquote>
-<blockquote>
-<p>iwctl
-device wlan0 set-property Mode ap
-ap wlan0 start-profile Void</p>
-</blockquote>
-</blockquote>
-</blockquote>
-</blockquote>
+DNSList=8.8.8.8
+</code></pre>
+<p>Then, we start iwd AP mode on <code>wlan0</code>.
+&#187;> iwctl
+&#187;> device wlan0 set-property Mode ap
+&#187;> ap wlan0 start-profile Void</p>
 <p>Up and running? Nope. Turns out we need to enable
 NAT (Network Address Translation), otherwise our subnet cannot
 access internet (or the externat network). Add the following rules
-to your nftables</p>
-<blockquote>
-<p>table ip nat {
+to your nftables
+<strong>File:</strong> /etc/nftables.conf
+&mldr;
+table ip nat {
 chain prerouting {
 type nat hook prerouting priority 0; policy accept;
 }</p>
-<pre><code>chain postrouting {
-    type nat hook postrouting priority 100; policy accept;
-    oifname &quot;eth0&quot; masquerade
+<pre><code>    chain postrouting {
+        type nat hook postrouting priority 100; policy accept;
+        oifname &quot;eth0&quot; masquerade
+    }
 }
 </code></pre>
-<p>}</p>
-</blockquote>
 <p>Restart nftables.service and you should be able to connect to Void and
 to whatever Void can connect to. Although this approach is very easy
 and straightforward, the speed connection is terribly slow.
 I can barely get a download speed of 4mbps. I got around 9mpbs when I
 connected directly to the access point. I guess the reason is because
-<code>iwd</code> AP mode is very basic that it does not take advantage of
+iwd AP mode is very basic that it does not take advantage of
 my wireless adapater features, and thus I search around for
 the second method.</p>
 <h2 id=method-2-hostapd--bridge-wlan0-and-eth0>Method 2: Hostapd + Bridge wlan0 and eth0<a href=#method-2-hostapd--bridge-wlan0-and-eth0 class=hanchor arialabel=Anchor>&#8983;</a> </h2>
-<p>First, we need to create a virtual bridge:</p>
-<blockquote>
-<p><code>/etc/systemd/network/02-br0.netdev</code>
+<p>First, we need to create a virtual bridge:
+<strong>File:</strong> /etc/systemd/network/02-br0.netdev
 [NetDev]
 Name=br0
 Kind=bridge</p>
-</blockquote>
-<blockquote>
-<p><code>/etc/systemd/network/16-br0_up.network</code>
+<p><strong>File:</strong> /etc/systemd/network/16-br0_up.network
 [Match]
 Name=br0</p>
-<p>[Network]
-DHCP=ipv4</p>
-</blockquote>
-<blockquote>
-<p><code>/etc/systemd/network/04-eth0.network</code>
+<pre><code>[Network]
+DHCP=ipv4
+</code></pre>
+<p><strong>File:</strong> /etc/systemd/network/04-eth0.network
 [Match]
 Name=eth0</p>
-<p>[Network]
-Bridge=br0</p>
-</blockquote>
-<p>We also need to reconfigure our internal interface:</p>
-<blockquote>
-<p><code>/etc/systemd/network/25-wireless.network</code>
+<pre><code>[Network]
+Bridge=br0
+</code></pre>
+<p>We also need to reconfigure our internal interface:
+<strong>File:</strong> /etc/systemd/network/25-wireless.network
 [Match]
 Name=wlan0</p>
-<p>[Network]
+<pre><code>[Network]
 IPMasquerade=yes
 Address=192.168.16.1/24
-DHCPServer=yes</p>
-<p>[DHCPServer]
+DHCPServer=yes
+
+[DHCPServer]
 DNS=192.168.16.1
 DNS=8.8.8.8
-DNS=8.8.4.4</p>
-</blockquote>
+DNS=8.8.4.4 
+</code></pre>
 <p>We&rsquo;re almost done. We only need to configure hostapd. Depends on
 your use case, you may want to change the settings such as
-country_code, channel,&mldr;</p>
-<blockquote>
-<p><code>/etc/hostapd/hostapd.conf</code>
+country_code, channel,&mldr;
+<strong>File:</strong> /etc/hostapd/hostapd.conf
 interface=wlan0
 bridge=br0
 driver=nl80211
@@ -207,7 +188,6 @@ wpa_passphrase=verySecretPassword
 wpa_key_mgmt=WPA-PSK
 wpa_pairwise=CCMP
 ieee80211n=1</p>
-</blockquote>
 <p>Then enable hostapd.service and reboot. Using this method, my download
 speed when connected to Void is improved to around 85mpbs. Whoops!
 However, I&rsquo;m still looking into methods that can let me use 80211ac/ax
