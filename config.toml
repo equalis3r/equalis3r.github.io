@@ -64,7 +64,7 @@ paginate = 5
     readOtherPosts = "Read other posts"
     newerPosts = "Newer posts"
     olderPosts = "Older posts"
-    missingContentMessage = "Page not found..."
+    missingContentMessage = "One day I will update this section..."
     missingBackButtonLabel = "Back to home page"
 
     [languages.en.params.logo]
@@ -76,7 +76,3 @@ paginate = 5
         identifier = "about"
         name = "About"
         url = "/about"
-      [[languages.en.menu.main]]
-        identifier = "showcase"
-        name = "Showcase"
-        url = "/showcase"
